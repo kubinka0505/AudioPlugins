@@ -1,0 +1,54 @@
+{
+	"Name": "Joiner",
+	"Version": "1.0.0",
+	"Factory Info": {
+		"Vendor": "kubinka0505",
+		"URL": "https://kubinka0505.github.io",
+		"E-Mail": "kubinka0505@yandex.com",
+		"Flags": {
+			"Unicode": true,
+			"Classes Discardable": false,
+			"Component Non Discardable": false
+		}
+	},
+	"Classes": [
+		{
+			"CID": "ABCDEF019182FAEB4B5530354A6E6572",
+			"Category": "Audio Module Class",
+			"Name": "Joiner",
+			"Vendor": "kubinka0505",
+			"Version": "1.0.0",
+			"SDKVersion": "VST 3.7.12",
+			"Sub Categories": [
+				"Fx",
+				"Stereo"
+			],
+			"Class Flags": 0,
+			"Cardinality": 2147483647
+		},
+		{
+			"CID": "ABCDEF011234ABCD4B5530354A6E6572",
+			"Category": "Component Controller Class",
+			"Name": "Joiner",
+			"Vendor": "kubinka0505",
+			"Version": "1.0.0",
+			"SDKVersion": "VST 3.7.12",
+			"Sub Categories": [
+				"Fx",
+				"Stereo"
+			],
+			"Class Flags": 0,
+			"Cardinality": 2147483647
+		},
+		{
+			"CID": "ABCDEF01C0DEF00D4B5530354A6E6572",
+			"Category": "Plugin Compatibility Class",
+			"Name": "Joiner",
+			"Vendor": "kubinka0505",
+			"Version": "1.0.0",
+			"SDKVersion": "VST 3.7.12",
+			"Class Flags": 0,
+			"Cardinality": 2147483647
+		}
+	]
+}

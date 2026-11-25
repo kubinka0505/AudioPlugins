@@ -1,0 +1,1 @@
+<a href="https://app.codacy.com/gh/kubinka0505/AudioPlugins"><img src="https://img.shields.io/codacy/grade/375d4551311540a9a3233052d6cba9ee?logo=codacy&style=for-the-badge&cacheSeconds=60"></a>
