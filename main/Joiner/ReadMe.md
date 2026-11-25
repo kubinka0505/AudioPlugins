@@ -30,3 +30,6 @@
 | OS Name | OS Version | OS Architecture | Software Name | Software Version | Software Architecture | Plugin Standard | Plugin Architecture |
 |:-|:-|:-|:-|:-|:-|:-|:-|
 | Windows | 10 21H2 19044.3086 | 64-bit | FL Studio | 26.1.6.5639 | 64-bit | VST3 | 32-bit<br>64-bit |
+
+> [!NOTE]  
+> Linux (`.so`) builds were made using the [following](https://colab.research.google.com/github/kubinka0505/AudioPlugins/blob/main/util/Builder.ipynb) notebook.

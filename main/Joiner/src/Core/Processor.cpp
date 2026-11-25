@@ -423,16 +423,15 @@ void AudioProcessor::setStateInformation(const void* data, int sizeInBytes) {
 
 		const int fftVal = (int)apvts.state.getProperty("pcFftSize", StereoMaskEngine::FFT);
 
-		// Accept only the valid sizes; fall back to default
-		if (
-			fftVal == 2048 ||
-			fftVal == 4096 ||
-			fftVal == 8192 ||
-			fftVal == 16384
-		)
+		// Accept sqrt only
+		const double root = std::sqrt(static_cast<double>(fftVal));
+		const bool isPerfectSquare = (std::floor(root) == root);
+
+		if (isPerfectSquare) {
 			pcFftSize.store(fftVal);
-		else
+		} else {
 			pcFftSize.store(StereoMaskEngine::FFT);
+		}
 	}
 }
 

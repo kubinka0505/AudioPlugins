@@ -24,10 +24,13 @@ class StereoMaskEngine {
 		void prepare(double sampleRate, int fftSize = FFT) {
 			fftN    = nearestPow2(fftSize, 2048, 16384);
 			hop     = static_cast<int>(fftN * (1.0 - overlap) + 0.5);
+
 			bins    = fftN / 2 + 1;
 			bits    = log2i(fftN);
+
 			ring    = nextPow2(fftN * 2);
 			ola     = nextPow2(fftN * 2);
+
 			latency = fftN;
 
 			window .assign(fftN,     0.f);
