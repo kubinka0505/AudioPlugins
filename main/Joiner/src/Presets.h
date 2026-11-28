@@ -6,6 +6,7 @@ Built-in factory presets shown by the host as the plugin's program list
 #include <cmath>
 #include <utility>
 #include <vector>
+#include "Utils/GainUtils.h"
 
 struct Preset {
 	const char* name;
@@ -13,21 +14,11 @@ struct Preset {
 };
 
 namespace detail {
-	// 10 ^ (dB/20) — converts a gain in dB to a linear amplitude
-	inline float dbToLin(float db) {
-		return std::pow(10.0f, db / 20.0f);
-	}
-
-	// The "m/s" split magnitude used by the M/S presets.
-	// 0.657732... ~= -3.63647 dB, and 0.342265... = 1 - that.
-	constexpr float kMSDb = -3.63647f;
-
-	// 0.657732439041138
 	inline float msHi() {
-		return dbToLin(kMSDb);
+		const float t = 0.25f * std::pow(0.5f, 1.0f / GainUtils::kFaderPow);
+		return 0.5f + t;
 	}
 
-	// 0.342265624552965
 	inline float msLo() {
 		return 1.0f - msHi();
 	}

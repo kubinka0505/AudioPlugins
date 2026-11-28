@@ -35,7 +35,7 @@ namespace DelayMap {
 	inline constexpr int kSteps = static_cast<int>(sizeof(kBeats) / sizeof(kBeats[0]));
 
 	// Display names
-	inline constexpr const char* kNames[kSteps] = {
+	inline constexpr const char* kNames[] = {
 		"1/256",
 		"1/128",
 		"1/64",
@@ -49,6 +49,11 @@ namespace DelayMap {
 		"4",
 		"8"
 	};
+
+	static_assert(
+		sizeof(kNames) / sizeof(kNames[0]) == (size_t)kSteps,
+		"DelayMap::kNames must have exactly one entry per DelayMap::kBeats value"
+	);
 
 	// Delay duration in seconds for knob value v.
 	inline float seconds(float v, bool bpmMode, double bpm) {

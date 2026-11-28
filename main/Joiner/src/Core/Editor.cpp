@@ -11,7 +11,7 @@ namespace {
 
 	// Snap points for the bipolar faders
 	static const std::vector<double> kVolSnaps = [] {
-		constexpr double kPow = 1.4992;
+		const double kPow = (double)GainUtils::kFaderPow;
 		const double step = 20.0 * std::log10(2);
 
 		const double t_6  = step / 48.0 + 1.0 / 4.0;
@@ -34,27 +34,53 @@ namespace {
 	const std::vector<double> kKnobSnaps = { 1.0 / 2.0 };
 
 	// Canvas geometry (base pixels, before scaling)
-	constexpr int kFaderW    = 76;                   // width of one fader cell
-	constexpr int kSliderCol = kFaderW * 4;          // left column width
-	constexpr int kRightW    = 146;                  // right column width
+	constexpr int kFaderN    = 4;
+	constexpr int kFaderW    = 66;                   // width of one fader cell
+	constexpr int kSliderCol = kFaderW * kFaderN;    // left column width
+	constexpr int kRightW    = 36 * kFaderN;         // right column width
 	constexpr int kBaseW     = kSliderCol + kRightW;
-	constexpr int kBaseH     = 620;
+	constexpr int kBaseH     = 700;
 
 	constexpr int kTop       = 10;                   // space above the first fader row
 	constexpr int kRowH      = (kBaseH - kTop) / 3;
 	constexpr int kLabelH    = 18;
 	constexpr int kBoxH      = 18;
-	constexpr int kSectionH  = kBaseH / 4;
 	constexpr int kKnobSize  = 100;
 	constexpr int kBoxW      = 118;                  // knob value box width
 
-	constexpr float kMinScale = 0.75f;
+	//-=-=-=-//
+
+	constexpr int kKnobCount         = 4;
+	constexpr int kScaleRowH         = 28; // Scale label + combo row height
+	constexpr int kScaleBottomPad    = 8;  // gap between Scale row and the first knob
+	constexpr int kKnobTopPad        = 6;  // extra top padding for every knob after the first
+	constexpr int kBottomGapAboveSep = 8;  // gap between last knob and the separator line
+	constexpr int kBottomGapBelowSep = 8;  // gap between separator line and Invert/Swap
+	constexpr int kButtonH           = 26;
+	constexpr int kGapAfterButtons   = 8;
+	constexpr int kFftRowH           = 20;
+
+	constexpr int kScaleBlockH = kScaleRowH + kScaleBottomPad;
+	constexpr int kBottomBlockH =
+		kBottomGapAboveSep + kBottomGapBelowSep + kButtonH + kGapAfterButtons + kFftRowH;
+
+	constexpr int kKnobsTop    = kScaleBlockH;
+	constexpr int kKnobsAreaH  = kBaseH - kKnobsTop - kBottomBlockH;
+	constexpr int kSectionH    = kKnobsAreaH / kKnobCount;
+	constexpr int kKnobsBottom = kKnobsTop + kSectionH * kKnobCount;
+
+	constexpr int kSepLineY = kKnobsBottom + kBottomGapAboveSep;
+	constexpr int kButtonsY = kSepLineY    + kBottomGapBelowSep;
+	constexpr int kFftY     = kButtonsY    + kButtonH + kGapAfterButtons;
+
+	constexpr float kMinScale = 0.5f;
 	constexpr float kMaxScale = 2.0f;
 
 	// Fader rows: parameter prefix, label prefix, accent
 	struct RowInfo {
 		const char* idPrefix;
-		const char* namePrefix; juce::Colour accent;
+		const char* namePrefix;
+		juce::Colour accent;
 	};
 
 	const RowInfo kRows[3] = {
@@ -64,7 +90,10 @@ namespace {
 	};
 
 	// Fader columns: parameter id, label
-	struct ColInfo { const char* id; const char* name; };
+	struct ColInfo {
+		const char* id;
+		const char* name;
+	};
 	const ColInfo kCols[4] = {
 		{"ril", "RIL"},
 		{"l", "L"},
@@ -72,8 +101,8 @@ namespace {
 		{"lir", "LIR"}
 	};
 
-	// Scale dropdown entries: float values, displayed as "N%" computed at runtime
-	constexpr float kScales[]    = { 0.75f, 1.0f, 1.25f, 1.5f, 2.0f };
+	// Scale dropdown entries
+	constexpr float kScales[]    = { kMinScale, 0.75f, 1.0f, 1.25f, 1.5f, kMaxScale };
 	constexpr int   kScaleCount  = (int)(sizeof(kScales) / sizeof(kScales[0]));
 
 	// Stereo mask FFT sizes: int values
@@ -106,15 +135,16 @@ AudioProcessorEditor::AudioProcessorEditor(AudioProcessor& p)
 		}
 	}
 
-	// BPM button first: the delay box asks the parameter (not the button) for its mode
+	// BPM button
 	setupBpmButton();
 
 	auto& apvts = audioProcessor.apvts;
 
-	addKnob("Delay | L<>R", "delay", std::make_unique<ValueMappings::Delay>([&apvts] {
+	addKnob("Delay", "delay", std::make_unique<ValueMappings::Delay>([&apvts] {
 		return apvts.getRawParameterValue("delay_bpm") -> load() > 0.5f;
 	}));
-	addKnob("Phase | L<>R", "phase", std::make_unique<ValueMappings::Phase>());
+	addKnob("Phase", "phase", std::make_unique<ValueMappings::Phase>());
+	addKnob("Panning",   "pan",   std::make_unique<ValueMappings::Pan>());
 	addKnob("Separation",   "sep",   std::make_unique<ValueMappings::Separation>());
 
 	knobs[0] -> slider.quantise = [this] {
@@ -152,7 +182,13 @@ AudioProcessorEditor::AudioProcessorEditor(AudioProcessor& p)
 	);
 }
 
-AudioProcessorEditor::~AudioProcessorEditor() {}
+AudioProcessorEditor::~AudioProcessorEditor() {
+	bpmButton.setLookAndFeel(nullptr);
+	invertButton.setLookAndFeel(nullptr);
+	swapButton.setLookAndFeel(nullptr);
+	scaleCombo.setLookAndFeel(nullptr);
+	pcBufferCombo.setLookAndFeel(nullptr);
+}
 
 // -=-=-=- //
 // Setup helpers
@@ -209,6 +245,7 @@ void AudioProcessorEditor::addKnob(
 
 void AudioProcessorEditor::setupBpmButton() {
 	bpmButton.setClickingTogglesState(true);
+	bpmButton.setLookAndFeel(&utilityLaf);
 	content.addAndMakeVisible(bpmButton);
 
 	bpmAttach = std::make_unique<ButtonAttachment>(audioProcessor.apvts, "delay_bpm", bpmButton);
@@ -216,7 +253,7 @@ void AudioProcessorEditor::setupBpmButton() {
 	// Switching mode keeps the delay time: convert the knob position to the other scale
 	bpmButton.onClick = [this] {
 		auto& apvts      = audioProcessor.apvts;
-		const bool toBpm = bpmButton.getToggleState();   // already toggled when onClick fires
+		const bool toBpm = bpmButton.getToggleState(); // already toggled when onClick fires
 
 		double bpm = audioProcessor.getLastBpm();
 
@@ -252,6 +289,7 @@ void AudioProcessorEditor::setupBpmButton() {
 }
 
 void AudioProcessorEditor::setupInvertButton() {
+	invertButton.setLookAndFeel(&utilityLaf);
 	content.addAndMakeVisible(invertButton);
 
 	// Flip the polarity of every fader: v -> 1 - v keeps the dB magnitude
@@ -269,9 +307,10 @@ void AudioProcessorEditor::setupInvertButton() {
 }
 
 void AudioProcessorEditor::setupSwapButton() {
+	swapButton.setLookAndFeel(&utilityLaf);
 	content.addAndMakeVisible(swapButton);
 
-	// In every row: L <-> R and RIL <-> LIR
+	// In every row
 	swapButton.onClick = [this] {
 		auto& apvts   = audioProcessor.apvts;
 		auto exchange = [&](const juce::String& a, const juce::String& b) {
@@ -286,8 +325,15 @@ void AudioProcessorEditor::setupSwapButton() {
 		};
 
 		for (const auto& row : kRows) {
-			exchange(juce::String(row.idPrefix) + "l",   juce::String(row.idPrefix) + "r");
-			exchange(juce::String(row.idPrefix) + "ril", juce::String(row.idPrefix) + "lir");
+			exchange(
+				juce::String(row.idPrefix) + "l",
+				juce::String(row.idPrefix) + "r"
+			);
+
+			exchange(
+				juce::String(row.idPrefix) + "ril",
+				juce::String(row.idPrefix) + "lir"
+			);
 		}
 	};
 }
@@ -303,6 +349,7 @@ void AudioProcessorEditor::setupScaleCombo() {
 		scaleCombo.addItem(::scaleLabel(kScales[i]), i + 1);
 	}
 
+	scaleCombo.setLookAndFeel(&utilityLaf);
 	content.addAndMakeVisible(scaleCombo);
 
 	// Resizing the window is the single code path: resized() rescales the canvas
@@ -337,6 +384,7 @@ void AudioProcessorEditor::setupPcBufferCombo() {
 		}
 	}
 
+	pcBufferCombo.setLookAndFeel(&utilityLaf);
 	content.addAndMakeVisible(pcBufferCombo);
 
 	pcBufferCombo.onChange = [this] {
@@ -395,6 +443,9 @@ void AudioProcessorEditor::paint(juce::Graphics& g) {
 	g.drawHorizontalLine(kTop + kRowH,     0.0f, (float)kSliderCol);
 	g.drawHorizontalLine(kTop + kRowH * 2, 0.0f, (float)kSliderCol);
 	g.drawVerticalLine(kSliderCol, 0.0f, (float)kBaseH);
+
+	// Right column: separator directly above Invert / Swap / FFT dropdown
+	g.drawHorizontalLine(kSepLineY, (float)kSliderCol, (float)kBaseW);
 }
 
 // -=-=-=- //
@@ -403,7 +454,7 @@ void AudioProcessorEditor::paint(juce::Graphics& g) {
 
 void AudioProcessorEditor::resized() {
 	// Can be called by JUCE before the constructor has created every control
-	if (faders.size() < 12 || knobs.size() < 3) {
+	if (faders.size() < 12 || knobs.size() < 4) {
 		return;
 	}
 
@@ -426,30 +477,32 @@ void AudioProcessorEditor::resized() {
 
 			f.label.setBounds(cell.removeFromTop(kLabelH));
 			f.box -> setBounds(cell.removeFromBottom(kBoxH).reduced(1, 0));
-			f.slider.setBounds(cell.reduced(3, 8)); // half of thumbD
+			f.slider.setBounds(cell.reduced(3, 6)); // half of thumbD (see LookAndFeel)
 		}
 	}
 
 	// Right column
-
-	constexpr int kScaleRowH = 28;
-	constexpr int gap        = 8;
+	constexpr int gap = 8;
 
 	// Scale row
-	const int rowY    = (kScaleRowH - 20) / 2;
-	const int labelW  = 38;
+	const int rowY   = (kScaleRowH - 20) / 2;
+	const int labelW = 38;
 
-	const int comboX  = kSliderCol + gap + labelW + 4;
-	const int comboW  = kBaseW - comboX - gap; // fill to right edge minus margin
+	const int comboX = kSliderCol + gap + labelW + 4;
+	const int comboW = kBaseW - comboX - gap;
 
 	scaleLabel.setBounds(kSliderCol + gap, rowY, labelW, 20);
 	scaleCombo.setBounds(comboX,           rowY, comboW, 20);
 
 	// Knobs
-	for (int i = 0; i < 3; ++i) {
-		auto& k    = *knobs[(size_t)i];
-		const int yTop = kScaleRowH + i * kSectionH;
-		auto area  = juce::Rectangle<int>(kSliderCol, yTop, kRightW, kSectionH);
+	for (int i = 0; i < kKnobCount; ++i) {
+		auto& k        = *knobs[(size_t)i];
+		const int yTop = kKnobsTop + i * kSectionH;
+		auto area      = juce::Rectangle<int>(kSliderCol, yTop, kRightW, kSectionH);
+
+		if (i > 0) {
+			area.removeFromTop(kKnobTopPad);
+		}
 
 		// Delay label (index 0) is trimmed on the right for the BPM button
 		k.label.setBounds(area.removeFromTop(kLabelH).withTrimmedRight(i == 0 ? 38 : 0));
@@ -460,21 +513,19 @@ void AudioProcessorEditor::resized() {
 		k.slider.setBounds(area.withSizeKeepingCentre(kKnobSize, kKnobSize));
 	}
 
-	// BPM btn
-	bpmButton.setBounds(kSliderCol + kRightW - 38, kScaleRowH + 1, 36, kLabelH - 2);
+	// BPM button
+	bpmButton.setBounds(kSliderCol + kRightW - 38, kKnobsTop + 1, 36, kLabelH - 2);
 
 	// Bottom area
 	const int btnW = (kRightW - gap * 3) / 2;
-	const int y    = kScaleRowH + kSectionH * 3 + gap;
 
-	invertButton.setBounds(kSliderCol + gap,            y, btnW, 26);
-	swapButton  .setBounds(kSliderCol + gap * 2 + btnW, y, btnW, 26);
+	invertButton.setBounds(kSliderCol + gap,            kButtonsY, btnW, kButtonH);
+	swapButton  .setBounds(kSliderCol + gap * 2 + btnW, kButtonsY, btnW, kButtonH);
 
-	const int y2      = y + 26 + gap;
-	const int pcLblW  = 26; // "FFT" at normal size
-	const int pcCmbX  = kSliderCol + gap + pcLblW + 4;
-	const int pcCmbW  = kBaseW - pcCmbX - gap;
+	const int pcLblW = 26; // "FFT" at normal size
+	const int pcCmbX = kSliderCol + gap + pcLblW + 4;
+	const int pcCmbW = kBaseW - pcCmbX - gap;
 
-	pcBufferLabel.setBounds(kSliderCol + gap, y2, pcLblW, 20);
-	pcBufferCombo.setBounds(pcCmbX,           y2, pcCmbW, 20);
+	pcBufferLabel.setBounds(kSliderCol + gap, kFftY, pcLblW, kFftRowH);
+	pcBufferCombo.setBounds(pcCmbX,           kFftY, pcCmbW, kFftRowH);
 }

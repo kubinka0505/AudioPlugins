@@ -156,6 +156,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout AudioProcessor::createParame
 			return GainUtils::sideText(v, 180.0f, juce::String::fromUTF8("\xc2\xb0"));
 		})));
 
+	// Pan
+	layout.add(std::make_unique<P>(
+		juce::ParameterID{ "pan", 1 }, "Pan", r, 0.5f,
+		A().withStringFromValueFunction([](float v, int) {
+			return GainUtils::sideText(v, 1.0f, "");
+		})));
+
 	// Stereo separation
 	layout.add(std::make_unique<P>(
 		juce::ParameterID{ "sep", 1 }, "Separation", r, 0.5f,
@@ -222,6 +229,7 @@ void AudioProcessor::prepareToPlay(double sampleRate, int) {
 	initSmooth(gR,          GainUtils::volToGain(get("r")));
 	initSmooth(gRil,        GainUtils::volToGain(get("ril")));
 	initSmooth(widthSmooth, get("sep") * 2.0f);
+	initSmooth(panSmooth,   get("pan"));
 
 	float dt[2];
 	delayTargets(get("delay"), dt);
@@ -281,6 +289,7 @@ void AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
 	gR  .setTargetValue(GainUtils::volToGain(get("r")));
 	gRil.setTargetValue(GainUtils::volToGain(get("ril")));
 	widthSmooth.setTargetValue(get("sep") * 2.0f);
+	panSmooth  .setTargetValue(get("pan"));
 
 	// Pull BPM from host play-head (non-blocking)
 	if (auto* ph = getPlayHead()) {
@@ -376,7 +385,7 @@ void AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
 
 			s.wpos = (s.wpos + 1) % sz;
 
-			// First-order all-pass: H(z) = (z^-1 - coeff)/(1 - coeff*z^-1), coeff = -cos(theta)
+			// First-order all-pass: H(z) = (z ^ -1 - coeff)/(1 - coeff * z ^ -1), coeff = -cos(theta)
 			const float coeff = -std::cos(phaseSmooth[c].getNextValue());
 			const float y     = -coeff * x + s.apState;
 
@@ -387,8 +396,20 @@ void AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
 		const float mid  = (out[0] + out[1]) * 0.5f;
 		const float side = (out[0] - out[1]) * 0.5f * widthSmooth.getNextValue();
 
-		data[0][n] = mid + side;
-		data[1][n] = mid - side;
+		const float widened[2] = {
+			mid + side,
+			mid - side
+		};
+
+		// Circular panning
+		const float panN  = panSmooth.getNextValue(); // 0 = left, 0.5 = center, 1 = right
+		const float theta = panN * juce::MathConstants<float>::halfPi;
+
+		const float panL = std::sqrt(2.0f) * std::cos(theta);
+		const float panR = std::sqrt(2.0f) * std::sin(theta);
+
+		data[0][n] = widened[0] * panL;
+		data[1][n] = widened[1] * panR;
 	}
 }
 
@@ -429,15 +450,11 @@ void AudioProcessor::setStateInformation(const void* data, int sizeInBytes) {
 
 		const int fftVal = (int)apvts.state.getProperty("pcFftSize", StereoMaskEngine::FFT);
 
-		// Accept sqrt only
-		const double root = std::sqrt(static_cast<double>(fftVal));
-		const bool isPerfectSquare = (std::floor(root) == root);
+		// Accept only powers of two in the supported range
+		const bool isPow2 = fftVal > 0 && (fftVal & (fftVal - 1)) == 0;
+		const bool inRange = fftVal >= 128 && fftVal <= 16384;
 
-		if (isPerfectSquare) {
-			pcFftSize.store(fftVal);
-		} else {
-			pcFftSize.store(StereoMaskEngine::FFT);
-		}
+		pcFftSize.store((isPow2 && inRange) ? fftVal : StereoMaskEngine::FFT);
 	}
 }
 

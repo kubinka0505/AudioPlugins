@@ -164,6 +164,32 @@ namespace ValueMappings {
 
 	// -=-=-=- //
 
+	// Knob: pan
+	class Pan : public Base {
+		public:
+			juce::String unit() const override {
+				return {};
+			}
+
+			juce::String prefix(bool upper) const override {
+				return upper ? "R" : "L";
+			}
+
+			juce::String number(float v) const override {
+				return juce::String(std::abs(v - 0.5f) * 2.0f, 3);
+			}
+
+			float fromNumber(const juce::String& text, bool upper, float current) const override {
+				if (!hasDigit(text)) {
+					return current;
+				}
+
+				return fromMagnitude((float)std::abs(text.getDoubleValue()), upper);
+			}
+	};
+
+	// -=-=-=- //
+
 	// Knob: separation
 	class Separation : public Base {
 		public:

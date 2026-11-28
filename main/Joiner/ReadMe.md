@@ -8,12 +8,13 @@
 
 - Multiple independent bipolar crossover channel gain faders for:
   - Original signal
-  - Removed `Mid` signal (center)
-  - Removed `Side` signal (side)
+  - `Mid` signal (center)
+  - `Side` signal (side)
 - Channel delay
-- Channel dephasing
-- Channel separation
-- 16 presets
+- Channel phasing
+- Panning
+- Stereo separation
+- 16 internal presets
 
 ## Download 📥
 

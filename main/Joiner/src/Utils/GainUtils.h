@@ -7,11 +7,11 @@ Bipolar fader math and display helpers
 #include <cmath>
 
 namespace GainUtils {
-    // t = 0.25 * 10 ^ (-0.2) ~= 0.1577...
-    static const float kAnchorT = 0.25f * std::pow(10.0f, -0.2f);
+	// t = 0.25 * 10 ^ (-0.2) ~= 0.1577...
+	static const float kAnchorT = 0.25f * std::pow(10.0f, -0.2f);
 
-    // log(10 ^ (-0.3)) / log(_ / 0.25) ~= 1.499...
-    static const float kFaderPow = std::log(std::pow(10.0f, -0.3f)) / std::log(kAnchorT / 0.25f);
+	// log(10 ^ (-0.3)) / log(_ / 0.25) ~= 1.499...
+	static const float kFaderPow = std::log(std::pow(10.0f, -0.3f)) / std::log(kAnchorT / 0.25f);
 
 	// Positive-half mapping: t in [0, 0.5] -> linear gain
 	inline float halfToGain(float t) noexcept {

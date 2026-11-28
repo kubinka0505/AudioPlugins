@@ -10,6 +10,7 @@ Signal chain per sample:
 -> Variable delay (ms or BPM-synced note, up to 10 s)
 -> First-order all-pass phase shifter
 -> Mid/Side width control
+-> Circular panning
 -> Output
 */
 
@@ -106,6 +107,7 @@ private:
 	juce::SmoothedValue<float> delaySmooth[2];
 	juce::SmoothedValue<float> phaseSmooth[2];
 	juce::SmoothedValue<float> widthSmooth;
+	juce::SmoothedValue<float> panSmooth;
 
 	// [RIL, L, R, LIR]
 	juce::SmoothedValue<float> gPce[4], gPcr[4];

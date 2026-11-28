@@ -2,22 +2,12 @@
 /*
 Editor declaration
 ------------------
-All controls live on a fixed-size canvas (`content`, kBaseW x kBaseH). The canvas is scaled
-to fill the editor window, so the window can be any size with the same aspect ratio:
+All controls live on a fixed-size canvas
+
+The canvas is scaled to fill the editor window, so
+the window can be any size with the same aspect ratio:
 - drag the resize handle in the bottom-right corner, or
 - pick a size in the Scale dropdown.
-
-(The editor's own transform is owned by the host's DPI handling, so it is never touched.)
-
-Canvas layout:
-- Left column - three rows of 4 vertical faders
-  - Row 0: RIL | L | R | LIR                    (red)
-  - Row 1: PCE RIL | PCE L | PCE R | PCE LIR    (green)
-  - Row 2: PCR RIL | PCR L | PCR R | PCR LIR    (green)
-
-- Right column - four sections
-  - Delay knob (+ BPM button), Phase knob, Separation knob (all red),
-  - then [Invert] [Swap] and the Scale dropdown
 */
 
 #include "Processor.h"
@@ -28,7 +18,7 @@ Canvas layout:
 class AudioProcessorEditor : public juce::AudioProcessorEditor {
 	public:
 		AudioProcessorEditor(AudioProcessor&);
-		~AudioProcessorEditor() override;
+		~AudioProcessorEditor() override; // detaches utilityLaf from every button/combo
 
 		void paint(juce::Graphics&) override;
 		void resized() override;
@@ -82,6 +72,9 @@ class AudioProcessorEditor : public juce::AudioProcessorEditor {
 		void  syncScaleCombo();
 
 		AudioProcessor& audioProcessor;
+
+		// Shared by every TextButton / ComboBox
+		UtilityLookAndFeel utilityLaf;
 
 		// Fixed-size canvas holding every control (scaled to the window in resized())
 		juce::Component content;

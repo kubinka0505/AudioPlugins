@@ -49,7 +49,7 @@ class LookAndFeel : public juce::LookAndFeel_V4 {
 			}
 
 			constexpr float trackW = 6.0f;  // wider than the default ~4 px
-			constexpr float thumbD = 16.0f; // circle diameter
+			constexpr float thumbD = 14.0f; // circle diameter
 
 			const float cx   = (float)x + (float)w * 0.5f;
 			const float top  = (float)y;
@@ -83,7 +83,7 @@ class LookAndFeel : public juce::LookAndFeel_V4 {
 				trackW * 0.5f
 			);
 
-			// Thumb — 20 px circle
+			// Thumb - 20 px circle
 			g.setColour(
 				findColour(juce::Slider::thumbColourId).brighter(0.3f)
 			);
@@ -97,6 +97,84 @@ class LookAndFeel : public juce::LookAndFeel_V4 {
 
 	private:
 		juce::Colour accent;
+};
+
+// -=-=-=- //
+
+// Shared look-and-feel
+class UtilityLookAndFeel : public juce::LookAndFeel_V4 {
+	public:
+		static constexpr float kCornerRadius = 2.0f;
+
+		UtilityLookAndFeel() {
+			const auto bg = juce::Colour(0xFF222222);
+
+			setColour(juce::TextButton::buttonColourId,   bg);
+			setColour(juce::TextButton::buttonOnColourId, bg.brighter(0.25f));
+			setColour(juce::TextButton::textColourOffId,  juce::Colours::lightgrey);
+			setColour(juce::TextButton::textColourOnId,   juce::Colours::white);
+
+			setColour(juce::ComboBox::backgroundColourId, bg);
+			setColour(juce::ComboBox::outlineColourId,    bg.brighter(2.0f / 3));
+			setColour(juce::ComboBox::textColourId,       juce::Colours::lightgrey);
+			setColour(juce::ComboBox::arrowColourId,      juce::Colours::lightgrey);
+		}
+
+		void drawButtonBackground(
+			juce::Graphics& g,
+			juce::Button& button,
+
+			const juce::Colour& backgroundColour,
+
+			bool isHighlighted,
+			bool isDown
+		) override {
+			auto bounds = button.getLocalBounds().toFloat();
+
+			auto fill = backgroundColour;
+			if (isDown) {
+				fill = fill.brighter(0.25f);
+			} else if (isHighlighted) {
+				fill = fill.brighter(0.12f);
+			}
+
+			g.setColour(fill);
+			g.fillRoundedRectangle(bounds, kCornerRadius);
+		}
+
+		void drawComboBox(
+			juce::Graphics& g,
+
+			int width,
+			int height,
+
+			bool /*isButtonDown*/,
+
+			int /*buttonX*/,
+			int /*buttonY*/,
+			int /*buttonW*/,
+			int /*buttonH*/,
+
+			juce::ComboBox& box
+		) override {
+			auto bounds = juce::Rectangle<float>(0.0f, 0.0f, (float)width, (float)height);
+
+			g.setColour(box.findColour(juce::ComboBox::backgroundColourId));
+			g.fillRoundedRectangle(bounds, kCornerRadius);
+
+			g.setColour(box.findColour(juce::ComboBox::outlineColourId));
+			g.drawRoundedRectangle(bounds.reduced(0.5f), kCornerRadius, 1.0f);
+
+			// Small downward-pointing arrow on the right
+			const auto arrowZone = juce::Rectangle<float>((float)width - 18.0f, 0.0f, 18.0f, (float)height);
+			juce::Path arrow;
+			arrow.startNewSubPath(arrowZone.getX() + 4.0f, arrowZone.getCentreY() - 2.0f);
+			arrow.lineTo(arrowZone.getCentreX(),           arrowZone.getCentreY() + 3.0f);
+			arrow.lineTo(arrowZone.getRight() - 4.0f,      arrowZone.getCentreY() - 2.0f);
+
+			g.setColour(box.findColour(juce::ComboBox::arrowColourId));
+			g.strokePath(arrow, juce::PathStrokeType(1.5f));
+		}
 };
 
 // -=-=-=- //
@@ -123,7 +201,7 @@ class SnapSlider : public juce::Slider {
 
 		~SnapSlider() override { setLookAndFeel(nullptr); }
 
-		// Return true to quantise to the 19 BPM-mode delay positions (centre +- 9 steps).
+		// Return true to quantise to the BPM-mode delay note positions
 		std::function<bool()> quantise;
 
 		double snapValue(double v, DragMode) override {
@@ -132,7 +210,8 @@ class SnapSlider : public juce::Slider {
 			}
 
 			if (quantise && quantise()) {
-				return 0.5 + std::round((v - 0.5) * 18.0) / 18.0;
+				const double steps = 2.0 * DelayMap::kSteps;
+				return 0.5 + std::round((v - 0.5) * steps) / steps;
 			}
 
 			for (double s : snaps) {
