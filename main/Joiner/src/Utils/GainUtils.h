@@ -7,17 +7,20 @@ Bipolar fader math and display helpers
 #include <cmath>
 
 namespace GainUtils {
-	// Exponent chosen so t = 0.1577 -> -6 dB exactly
-	static constexpr float kFaderPow = 1.4992f;
+    // t = 0.25 * 10 ^ (-0.2) ~= 0.1577...
+    static const float kAnchorT = 0.25f * std::pow(10.0f, -0.2f);
+
+    // log(10 ^ (-0.3)) / log(_ / 0.25) ~= 1.499...
+    static const float kFaderPow = std::log(std::pow(10.0f, -0.3f)) / std::log(kAnchorT / 0.25f);
 
 	// Positive-half mapping: t in [0, 0.5] -> linear gain
-	inline float halfToGain(float t) {
+	inline float halfToGain(float t) noexcept {
 		if (t <= 0.0f) {
 			return 0.0f;
 		}
 
 		if (t < 0.25f) {
-			return std::pow(t / 0.25f, kFaderPow);
+			return std::pow(t * 4.0f, kFaderPow);
 		}
 
 		return juce::Decibels::decibelsToGain(48.0f * (t - 0.25f));

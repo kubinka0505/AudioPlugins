@@ -106,6 +106,7 @@ juce::String AudioProcessor::delayText(float v) const {
 
 void AudioProcessor::delayTargets(float v, float out[2]) const {
 	const bool  bpm = delayBpmParam && delayBpmParam -> load() > 0.5f;
+
 	const float sec = DelayMap::seconds(v, bpm, lastBpm.load());
 	const float smp = juce::jmin(sec * (float)currentSampleRate, (float)(maxDelaySamples - 2));
 
@@ -197,8 +198,10 @@ void AudioProcessor::prepareToPlay(double sampleRate, int) {
 
 	for (auto& c : ch) {
 		c.apState = 0.0f;
+
 		c.latBuf.assign((size_t)pcLatency, 0.0f);
 		c.lpos = 0;
+
 		c.dbuf.assign((size_t)maxDelaySamples, 0.0f);
 		c.wpos = 0;
 	}
@@ -302,6 +305,7 @@ void AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
 
 	const char* pceIds[] = { "pce_ril","pce_l","pce_r","pce_lir" };
 	const char* pcrIds[] = { "pcr_ril","pcr_l","pcr_r","pcr_lir" };
+
 	for (int i = 0; i < 4; ++i) {
 		gPce[i].setTargetValue(GainUtils::volToGain(get(pceIds[i])));
 		gPcr[i].setTargetValue(GainUtils::volToGain(get(pcrIds[i])));
@@ -375,12 +379,14 @@ void AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
 			// First-order all-pass: H(z) = (z^-1 - coeff)/(1 - coeff*z^-1), coeff = -cos(theta)
 			const float coeff = -std::cos(phaseSmooth[c].getNextValue());
 			const float y     = -coeff * x + s.apState;
+
 			s.apState = x + coeff * y;
 			out[c]    = y;
 		}
 
 		const float mid  = (out[0] + out[1]) * 0.5f;
 		const float side = (out[0] - out[1]) * 0.5f * widthSmooth.getNextValue();
+
 		data[0][n] = mid + side;
 		data[1][n] = mid - side;
 	}
@@ -396,9 +402,9 @@ juce::AudioProcessorEditor* AudioProcessor::createEditor() {
 
 void AudioProcessor::getStateInformation(juce::MemoryBlock& destData) {
 	auto state = apvts.copyState();
-	state.setProperty("preset",    currentPreset,          nullptr);
-	state.setProperty("uiScale",   savedUiScale,           nullptr);
-	state.setProperty("pcFftSize", pcFftSize.load(),       nullptr);
+	state.setProperty("preset",    currentPreset,    nullptr);
+	state.setProperty("uiScale",   savedUiScale,     nullptr);
+	state.setProperty("pcFftSize", pcFftSize.load(), nullptr);
 
 	std::unique_ptr<juce::XmlElement> xml(state.createXml());
 	copyXmlToBinary(*xml, destData);

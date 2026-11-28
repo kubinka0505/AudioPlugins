@@ -9,8 +9,7 @@ Delay knob value v in [0, 1], 0.5 = no delay, each side is one channel:
 BPM off:
 - Linear 0 - 500 ms per side.
 BPM on:
- - 10 discrete note values per side (1 beat = 1 quarter note), ascending
-   from the centre outwards: 1/64, 1/32, 1/16, 1/8, 1/4, 1/2, 1, 2, 4, 8.
+ - Multiple discrete note values per side.
 */
 
 #include <cmath>
@@ -19,6 +18,8 @@ namespace DelayMap {
 	inline constexpr float kMaxMs = 500.0f;
 
 	inline constexpr float kBeats[] = {
+		1.0f / 256,
+		1.0f / 128,
 		1.0f / 64,
 		1.0f / 32,
 		1.0f / 16,
@@ -35,6 +36,8 @@ namespace DelayMap {
 
 	// Display names
 	inline constexpr const char* kNames[kSteps] = {
+		"1/256",
+		"1/128",
 		"1/64",
 		"1/32",
 		"1/16",

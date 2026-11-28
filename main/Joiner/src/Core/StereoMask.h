@@ -38,7 +38,8 @@ class StereoMaskEngine {
 			twIm   .assign(fftN / 2, 0.f);
 			rev    .assign(fftN,     0);
 
-			inL.assign(ring, 0.f);  inR.assign(ring, 0.f);
+			inL.assign(ring, 0.f);
+			inR.assign(ring, 0.f);
 
 			pceBuf .assign(ola, 0.f);
 			pcrLBuf.assign(ola, 0.f);
@@ -192,6 +193,7 @@ class StereoMaskEngine {
 					std::swap(re[i], re[j]); std::swap(im[i], im[j]);
 				}
 			}
+
 			for (int len = 2; len <= fftN; len <<= 1) {
 				const int half = len >> 1, step = fftN / len;
 
@@ -274,9 +276,24 @@ class StereoMaskEngine {
 				sm = sm * powCoef + midP  * (1.f - powCoef);
 				ss = ss * powCoef + sideP * (1.f - powCoef);
 
-				// wiener-like mask: (mid / (mid+side))^2
-				const float m = sm / (sm + ss + 1e-12f);
-				rawMask[k] = m * m;
+				// similarity s = (mid - side) / (mid + side) = 2 * Re(L * conj(R)) / (|L| ^ 2 + |R| ^ 2)
+				// +1: identical L/R
+				// =0: hard-panned or uncorrelated
+				// <0: out of phase
+				const float s = (sm - ss) / (sm + ss + 1e-12f);
+
+				// saturating map: s <= lo -> 0, s >= hi -> 1 (full removal from residual)
+				float r = (s - lo) / (hi - lo);
+
+				if (r < 0.f) {
+					r = 0.f;
+				}
+
+				else if (r > 1.f) {
+					r = 1.f;
+				}
+
+				rawMask[k] = r;
 			}
 
 			// 5-tap box frequency smoother
@@ -298,7 +315,7 @@ class StereoMaskEngine {
 			}
 
 			// apply mask to full spectrum and pack into two complex arrays
-			// ar + j*ai  carries the pce  signal (centre)
+			// ar + j*ai  carries the pce signal (centre)
 			// br + j*bi  carries pcrL (real) and pcrR (imag) via the same complex trick
 			for (int k = 0; k < fftN; ++k) {
 				const float m = smoothMask[k < bins ? k : fftN - k];
@@ -359,6 +376,10 @@ class StereoMaskEngine {
 
 		float powCoef  = 0.9f;
 		float maskCoef = 0.7f;
+
+		float lo       = 0.0f;  // similarity at/below which nothing is extracted
+		float hi       = 0.95f; // similarity at/above which the bin is fully extracted
+
 		int   inPos    = 0;
 		int   readPos  = 0;
 		int   hopCount = static_cast<int>(FFT * (1.0 - overlap) + 0.5);
